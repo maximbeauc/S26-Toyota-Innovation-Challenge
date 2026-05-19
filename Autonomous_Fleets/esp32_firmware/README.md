@@ -24,6 +24,7 @@ This firmware turns the ESP32 into a WiFi-to-UART bridge for the PRIZM controlle
 - PRIZM RX/TX are on Digital Sensor Port (D2/D9)
 
 for alternative pin mappings, see page 129 of the [PRIZM Programming Guide](https://asset.pitsco.com/sharedimages/resources/tetrix-prizm-programming-guide.pdf)
+<img src="esp32 circuit.png" alt="Description" width="300">
 
 ## Configuration
 
