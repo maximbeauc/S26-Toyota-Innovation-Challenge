@@ -13,7 +13,7 @@ AprilTags are a visual fiducial system (2D barcodes) used for robotics and compu
 ## Installation
 
 ### 1. Install Required Dependencies
-Install OpenCV and the AprilTag library on your Raspberry Pi by running these 1 by 1 in terminal:
+For installing OpenCV and the AprilTag library on your Raspberry Pi by running these 1 by 1 in terminal:
 
 ```bash
 sudo apt-get update
@@ -21,9 +21,15 @@ sudo apt-get install -y python3-pip cmake libgl1 libopenblas-dev
 pip install opencv-python-headless
 pip3 install numpy pupil-apriltags opencv-python-headless flask --break-system-packages
 ```
+For installing OpenCV and the AprilTag library on a Windows device: 
+
+```bash
+pip install opencv-python
+pip install pupil-apriltags
+```
 
 ## Basic AprilTag Detection
-Here's a simple example of how to detect AprilTags using OpenCV and the pupil-apriltags library:
+The code below is a simple example of how to detect AprilTags using OpenCV and the pupil-apriltags library on **your local laptop.**
 
 ```python
 import cv2
