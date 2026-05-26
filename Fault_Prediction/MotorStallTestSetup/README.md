@@ -25,7 +25,7 @@ A simple test setup to measure current draw of a 5V DC motor using a low-side sh
 - The shunt resistor is placed on the **low side** (between motor and GND)
 - Arduino GND **must** be shared with the motor power supply GND
 - The flyback diode **must** be wired in parallel with the motor
-- The stripe from the flyback diode is represents the arrow that shows which way the current is allowed to flow through
+- The stripe from the flyback diode represents the arrow that shows which way the current is allowed to flow through
 - The ADC pin measures the voltage across the shunt resistor
 
 ---
