@@ -1,3 +1,7 @@
+# You Must Prepare:
+- 7 minute presentation for the judges (+ 3-minute Q&A session)
+- 3 minute video about your solution, uploaded to Youtube as an unlisted video
+- PDF file of your presentation slides
 
 # Rubric
 You will be evaluated based on the following equally-weighted criteria. Please use these to guide your development decisions:
