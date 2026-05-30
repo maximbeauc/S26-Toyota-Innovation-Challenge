@@ -76,7 +76,7 @@ The goal is not just to build a model, but to show that it provides useful insig
   - The dataset contains time-series telemetry from an 8-DOF robotic manipulator, including joint states, end-effector pose, and actuator diagnostics at each timestamp. Specifically, it records joint positions, Cartesian position and orientation along with per-joint electrical/mechanical signals such as current, temperature, torque, and load percentage.
     <br>
 
-- **Motor Stall Data (accessed via zip file)
+- **Motor Stall Data** (accessed via motor_stall_data.zip)
   -  The motor stall data was collected by Murad and it is for a reference for your challenge.
     
 - **Open Source Data**
