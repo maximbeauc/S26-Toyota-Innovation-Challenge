@@ -24,6 +24,7 @@ You may use [this presentation template](https://github.com/IdeasClinicUWaterloo
 | Time | Judges #1 | Judges #2 | Judges #3 | Judges #4 | Judges #5 | Judges #6 |
 |-|-|-|-|-|-|-|
 | 2:30 PM | 8 | 27 | 17 | 31 | 12 | 3 |
+| 2:45 PM | 7 | 13 | 23 | 18 | - | 4 |
 
 # Submission
 Please submit your presentation slides as a PDF file along with a 3 minute unlisted Youtube video link to [this form](https://forms.cloud.microsoft/r/Gn6XDvu6zx) by 2:30 PM Sunday.
