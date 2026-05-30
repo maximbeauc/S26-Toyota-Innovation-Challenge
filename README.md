@@ -76,18 +76,8 @@ Resources and Kit information can be found in the folders for the respective sub
 
 To sign out a kit, go to the sign out table and speak to a coop. You will have to go through safety training for some of the kits.
 
-# Rubric & Presentation
-You will be evaluated based on the following equally-weighted criteria. Please use these to guide your development decisions:
-
-| Category           | Criteria                                                                 |
-|-------------------|--------------------------------------------------------------------------|
-| **Ideation**       | Relevance, feasibility, innovation, impact                              |
-| **Execution**      | Functionality, quality of prototype, ease of use                        |
-| **Safety**         | Little to no risk to user; meets Canadian safety regulations            |
-| **Human Centricity** | How does this help humans?                                            |
-| **Presentation**   | Clearly explained; depth of knowledge; application of relevant concepts |
-
-You can use [this presentation template](https://github.com/IdeasClinicUWaterloo/S26-Toyota-Innovation-Challenge/blob/e8504ff57e24840520e95d34c7cf6f4edc05faa9/Presentation/Toyota%20Innovation%20ChallengeMechanical_StudentPresentationTemplate.pptx)
+# Presentation & Submission
+Please find details about the rubric, presentation and submission [here](/Presentation_and_Submission).
 
 ## Schedule
 
