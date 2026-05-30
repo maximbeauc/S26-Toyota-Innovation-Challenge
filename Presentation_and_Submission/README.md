@@ -21,6 +21,8 @@ You will have 7 minutes to present your solution to the judges followed by 3 min
 You may use [this presentation template](https://github.com/IdeasClinicUWaterloo/S26-Toyota-Innovation-Challenge/blob/9ac5706311191deff7e49dfb62e869a9e407216c/Presentation_and_Submission/Toyota%20Innovation%20ChallengeMechanical_StudentPresentationTemplate.pptx) as a guide.
 
 # Presentation Schedule
+| Time | Judges #1 | Judges #2 | Judges #3 | Judges #4 | Judges #5 | Judges #6 |
+|-|-|-|-|-|-|-|
 Please refer to [this PDF](https://github.com/IdeasClinicUWaterloo/S26-Toyota-Innovation-Challenge/blob/eac31e8cbe33ad4bbda315a4fa4d0555366f23f5/Presentation_and_Submission/S26%20TIC%20Judging%20Plan.pdf).
 
 # Submission
