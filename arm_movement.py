@@ -1,6 +1,6 @@
 import time
 import math
-import dobotArm
+from Collaborative_Robotics import dobotArm
 
 
 TEST_OBJECTS = [
@@ -243,9 +243,9 @@ class CollaborativeRobot:
             speed = self.calculate_speed(dist_bot_to_hand_arm)
             if self.api: dobotArm.dType.SetPTPCommonParams(self.api, speed, speed, isQueued=1)
             
-            shadow_x = hand.get('x', 200) - 150 
+            shadow_x = hand.get('x', 200)
             shadow_y = hand.get('y', 0)
-            if self.api: 
+            if self.api:
                 if not self.is_robot_busy():
                     # Only send new tracking command if previous one finished
                     self.active_cmd_index = dobotArm.move_to_xyz_async(self.api, shadow_x, shadow_y, self.Z_HOVER)
@@ -265,8 +265,8 @@ class CollaborativeRobot:
                 self.change_state(State.TRACK)
                 return
             
-            # Command shadow position
-            shadow_x = hand.get('x', 200) - 150 
+            # Command shadow position directly above palm
+            shadow_x = hand.get('x', 200)
             shadow_y = hand.get('y', 0)
             if self.api and not self.is_robot_busy():
                 self.active_cmd_index = dobotArm.move_to_xyz_async(self.api, shadow_x, shadow_y, self.Z_HOVER)
