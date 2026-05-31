@@ -29,7 +29,8 @@ def initialize_robot(api):
         exit()
     
     #we've found it, so let's try to connect
-    state = dType.ConnectDobot(api, "COM7", 115200)[0]
+    print(com_port)
+    state = dType.ConnectDobot(api, "COM5", 115200)[0]
     
     #If the connection failed at this point, we also can't proceed, so we need to exit
     if state != dType.DobotConnect.DobotConnect_NoError:
@@ -135,4 +136,21 @@ def stop_pump(api):
     #This command just gets sent, there is no feedback, so we need to wait until the pump turns off
     #We don't need to wait as long as we do for the gripper
     dType.dSleep(50)
+
+# --- Async variants for non-blocking state machine ---
+
+def move_to_xyz_async(api, x, y, z, rHead=0):
+    return dType.SetPTPCmd(api, dType.PTPMode.PTPMOVJXYZMode, x, y, z, rHead, isQueued=1)[0]
+
+def move_to_home_async(api):
+    return move_to_xyz_async(api, home_pos[0], home_pos[1], home_pos[2])
+
+def open_gripper_async(api):
+    return dType.SetEndEffectorGripper(api, 1, 0, isQueued=1)[0]
+
+def close_gripper_async(api):
+    return dType.SetEndEffectorGripper(api, 1, 1, isQueued=1)[0]
+
+def stop_pump_async(api):
+    return dType.SetEndEffectorSuctionCup(api, 1, 0, isQueued=1)[0]
 
