@@ -33,8 +33,6 @@ DEFAULT_CONFIG = {
     },
     # Blue: wide hue band, low saturation floor to catch slightly washed-out blues.
     "blue": {"lh": 90,  "ls": 50,  "lv": 30,  "uh": 135, "us": 255, "uv": 255},
-    # Grey: any hue, low saturation, wider brightness range to catch lighter greys.
-    "grey": {"lh": 0,   "ls": 0,   "lv": 30,  "uh": 180, "us": 80,  "uv": 240},
 }
 
 
@@ -75,10 +73,6 @@ class ControlPanel:
         ("Blue",        (200, 130, 0), [
             ("BL_LH", "Lower H", 180), ("BL_LS", "Lower S", 255), ("BL_LV", "Lower V", 255),
             ("BL_UH", "Upper H", 180), ("BL_US", "Upper S", 255), ("BL_UV", "Upper V", 255),
-        ]),
-        ("Grey",        (160, 160, 160), [
-            ("GR_LH", "Lower H", 180), ("GR_LS", "Lower S", 255), ("GR_LV", "Lower V", 255),
-            ("GR_UH", "Upper H", 180), ("GR_US", "Upper S", 255), ("GR_UV", "Upper V", 255),
         ]),
     ]
 
@@ -252,10 +246,6 @@ def save_config():
             "lh": get_tb("BL_LH"), "ls": get_tb("BL_LS"), "lv": get_tb("BL_LV"),
             "uh": get_tb("BL_UH"), "us": get_tb("BL_US"), "uv": get_tb("BL_UV"),
         },
-        "grey": {
-            "lh": get_tb("GR_LH"), "ls": get_tb("GR_LS"), "lv": get_tb("GR_LV"),
-            "uh": get_tb("GR_UH"), "us": get_tb("GR_US"), "uv": get_tb("GR_UV"),
-        },
     }
     with open(CONFIG_PATH, "w") as f:
         json.dump(config, f, indent=2)
@@ -425,7 +415,6 @@ SHOW_DEBUG_WINDOWS = config.get("show_debug_windows", False)
 r1 = config["red"]["range1"]
 r2 = config["red"]["range2"]
 bl = config["blue"]
-gr = config["grey"]
 
 
 # -----------------------------
@@ -506,8 +495,6 @@ _panel = ControlPanel({
     "R2_UH": r2["uh"], "R2_US": r2["us"], "R2_UV": r2["uv"],
     "BL_LH": bl["lh"], "BL_LS": bl["ls"], "BL_LV": bl["lv"],
     "BL_UH": bl["uh"], "BL_US": bl["us"], "BL_UV": bl["uv"],
-    "GR_LH": gr["lh"], "GR_LS": gr["ls"], "GR_LV": gr["lv"],
-    "GR_UH": gr["uh"], "GR_US": gr["us"], "GR_UV": gr["uv"],
 })
 
 PANEL_WIN = "HSV Controls"
@@ -524,6 +511,8 @@ palm_center  = None
 palm_depth_m = None
 
 _panel_w, _panel_h = 460, 740  # last known panel dimensions
+
+COLOR_ROI = (440, 130, 490, 190)  # x1, y1, x2, y2 — colour detection restricted to this box
 
 _show_debug_hsv = False
 _debug_hsv: dict = {}          # {"Red": [(H,S,V),...], "Blue": ..., "Grey": ...}
@@ -633,14 +622,17 @@ while True:
                             (palm_center[0] + 10, palm_center[1] - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
 
-    # ---- Colour detection — always runs, all colours simultaneously ----
+    # ---- Colour detection — restricted to ROI bounding box ----
+
+    _rx1, _ry1, _rx2, _ry2 = COLOR_ROI
+    roi_frame = np.zeros_like(frame)
+    roi_frame[_ry1:_ry2, _rx1:_rx2] = frame[_ry1:_ry2, _rx1:_rx2]
+    cv2.rectangle(display_frame, (_rx1, _ry1), (_rx2, _ry2), (200, 200, 200), 1)
 
     red_detected,  red_centers,  red_mask,  red_result  = detect_red(
-        frame, display_frame, MIN_AREA)
+        roi_frame, display_frame, MIN_AREA)
     blue_detected, blue_centers, blue_mask, blue_result = detect_color(
-        frame, display_frame, "BL", "Blue", (255, 0, 0), MIN_AREA)
-    grey_detected, grey_centers, grey_mask, grey_result = detect_color(
-        frame, display_frame, "GR", "Grey", (180, 180, 180), MIN_AREA)
+        roi_frame, display_frame, "BL", "Blue", (255, 0, 0), MIN_AREA)
 
     # ---- Debug HSV sampling (once per second) ----
 
@@ -652,7 +644,6 @@ while True:
         for _label, _centers in [
             ("Red",  red_centers),
             ("Blue", blue_centers),
-            ("Grey", grey_centers),
         ]:
             if _centers:
                 _samples = []
@@ -682,8 +673,6 @@ while True:
         active_lines.append((f"Red  x{len(red_centers)}: {red_centers}", (60, 60, 255)))
     if blue_detected:
         active_lines.append((f"Blue x{len(blue_centers)}: {blue_centers}", (255, 80, 0)))
-    if grey_detected:
-        active_lines.append((f"Grey x{len(grey_centers)}: {grey_centers}", (180, 180, 180)))
     if not active_lines:
         active_lines.append(("Detecting…", (160, 160, 160)))
 
@@ -698,7 +687,7 @@ while True:
     # ---- HSV debug overlay (bottom-right) ----
 
     if _show_debug_hsv and _debug_hsv:
-        _COLOR_BGR = {"Red": (60, 60, 255), "Blue": (255, 100, 0), "Grey": (180, 180, 180)}
+        _COLOR_BGR = {"Red": (60, 60, 255), "Blue": (255, 100, 0)}
         _lines = ["HSV debug (sampled)"]
         for _lbl, _samps in _debug_hsv.items():
             for _i, (_h, _s, _v) in enumerate(_samps):
@@ -740,7 +729,6 @@ while True:
         for win_label, m, r in [
             ("Red",  red_mask,  red_result),
             ("Blue", blue_mask, blue_result),
-            ("Grey", grey_mask, grey_result),
         ]:
             if m is not None:
                 cv2.imshow(f"{win_label} Mask", m)
