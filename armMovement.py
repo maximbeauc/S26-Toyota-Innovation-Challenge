@@ -2,6 +2,16 @@ import time
 import math
 import dobotArm
 
+
+TEST_OBJECTS = [
+    {'id': 'object_1', 'x': 220, 'y': -60, 'priority': 2},
+    {'id': 'object_2', 'x': 220, 'y': 60, 'priority': 1},
+]
+
+TEST_HAND_START = {'x': 350.0, 'y': 100.0, 'z': 40.0, 'radius': 35.0, 'gesture': 'Open'}
+TEST_HAND_PULL_AWAY_SPEED_MM_S = 7.0
+TEST_HAND_MAX_X = 430.0
+
 class State:
     IDLE = "IDLE"
     SEARCH = "SEARCH"
@@ -305,36 +315,83 @@ class CollaborativeRobot:
 
 
 def main():
-    print("Starting Full Execution Test...")
-    
-    # --- Hardware Init (keep uncommented for live robot test) ---
-    # api = dobotArm.dType.load()
-    # dobotArm.initialize_robot(api)
-    # dobotArm.open_gripper(api)
-    # bot = CollaborativeRobot(api=api)
-    
-    # --- Simulation Init (uncomment if testing without hardware) ---
+    run_two_object_robot_test()
+
+
+def run_two_object_robot_test(use_hardware=True):
+    """
+    Live robot test:
+    - Starts with two simulated objects inside the Dobot workspace.
+    - Presents an open hand for the first object.
+    - Pulls that hand away at 7 mm/s after the first object is dropped.
+    """
+    print("Starting two-object collaborative handoff test...")
+    print("Objects are simulated at reachable Dobot coordinates:")
+    for obj in TEST_OBJECTS:
+        print(f"  {obj['id']}: X={obj['x']}mm, Y={obj['y']}mm")
+    print(
+        "Open hand starts at "
+        f"X={TEST_HAND_START['x']}mm, Y={TEST_HAND_START['y']}mm "
+        f"and pulls away at {TEST_HAND_PULL_AWAY_SPEED_MM_S}mm/s after first drop."
+    )
+
     api = None
-    bot = CollaborativeRobot(api=None)
+    if use_hardware:
+        api = dobotArm.dType.load()
+        dobotArm.initialize_robot(api)
+        dobotArm.open_gripper(api)
+        dobotArm.stop_pump(api)
 
-    # 1. Dummy Object (Straight ahead, safely reachable)
-    dummy_objects = [{'x': 200, 'y': 0, 'priority': 1}]
+    bot = CollaborativeRobot(api=api)
+    remaining_objects = [obj.copy() for obj in TEST_OBJECTS]
+    hand = TEST_HAND_START.copy()
+    first_drop_complete = False
+    previous_state = bot.state
+    last_tick = time.time()
 
-    # 2. Dummy Hand (safely out of the way)
-    # 2D Bounding Box: Base (0,0) to arm/home (200,100).
-    # We put the hand far enough from the line segment to be safe (>75mm for SOFT).
-    # Let's put hand at x=200, y=250.
-    # Hand gesture is "Open", which will trigger the drop logic once in TRACK.
-    dummy_hands = [{'x': 200, 'y': 250, 'gesture': 'Open'}]
+    print("Press Ctrl+C to exit.")
 
-    print("Press Ctrl+C to exit. Expected Sequence:")
-    print("IDLE -> SEARCH -> APPROACH -> GRASP -> VERIFY_GRASP -> HOLD -> TRACK -> RELEASE_PENDING -> RELEASE -> VERIFY_RELEASE -> IDLE")
-    
     try:
         while True:
-            # We constantly feed the object and the open hand into the async polling loop
-            bot.update(dummy_hands, dummy_objects) 
-            time.sleep(0.1) # 10Hz tick
+            now = time.time()
+            dt = now - last_tick
+            last_tick = now
+
+            if first_drop_complete and hand['x'] < TEST_HAND_MAX_X:
+                hand['x'] = min(
+                    TEST_HAND_MAX_X,
+                    hand['x'] + TEST_HAND_PULL_AWAY_SPEED_MM_S * dt
+                )
+
+            hands = [hand] if not first_drop_complete or hand['x'] < TEST_HAND_MAX_X else []
+            bot.update(hands, remaining_objects)
+
+            if previous_state == State.VERIFY_RELEASE and bot.state == State.IDLE:
+                if remaining_objects:
+                    completed = remaining_objects.pop(0)
+                    print(f"[TEST] Completed drop for {completed['id']}.")
+                    if completed['id'] == 'object_1':
+                        first_drop_complete = True
+                        hand['gesture'] = 'Open'
+                        print("[TEST] First object dropped. Pulling simulated hand away.")
+
+                if not remaining_objects:
+                    print("[TEST] Both objects have been picked up. Returning home and ending test.")
+                    if api:
+                        dobotArm.move_to_home(api)
+                    break
+
+            if previous_state == State.VERIFY_GRASP and bot.state == State.HOLD:
+                if remaining_objects and remaining_objects[0]['id'] == 'object_2':
+                    completed = remaining_objects.pop(0)
+                    print(f"[TEST] Successfully picked up {completed['id']}.")
+                    print("[TEST] Both objects have been picked up. Returning home and ending test.")
+                    if api:
+                        dobotArm.move_to_home(api)
+                    break
+
+            previous_state = bot.state
+            time.sleep(0.1)
     except KeyboardInterrupt:
         print("\nTest terminated by user.")
 
