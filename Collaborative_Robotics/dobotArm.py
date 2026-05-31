@@ -1,4 +1,4 @@
-import lib.DobotDllType as dType
+from .lib import DobotDllType as dType
 
 #Useful global variables
 # --- These are status strings that you might see, so we're defining them here ---
@@ -21,8 +21,12 @@ home_pos = [200,100,50]
 
 def initialize_robot(api):
     #detect the robot's com port
-    com_port = dType.SearchDobot(api)[0]
-    
+    results = dType.SearchDobot(api)
+    if not results:
+        print("Error: The robot either isn't on or isn't responding. Exiting now")
+        exit()
+    com_port = results[0]
+
     #if we can't find it, then we can't continue, so exit
     if "COM" not in com_port:
         print("Error: The robot either isn't on or isn't responding. Exiting now")
