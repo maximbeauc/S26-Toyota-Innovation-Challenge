@@ -1,4 +1,8 @@
-import lib.DobotDllType as dType
+try:
+    from .lib import DobotDllType as dType
+except ImportError:
+    import lib.DobotDllType as dType
+import time
 
 #Useful global variables
 # --- These are status strings that you might see, so we're defining them here ---
@@ -8,9 +12,9 @@ CON_STR = {
     dType.DobotConnect.DobotConnect_Occupied: "DobotConnect_Occupied"
 }
 
-#always begin with this line, or you can't connect to the robot at all. Just don't
-#remove this line and keep it at the top of your code
-api = dType.load()
+# Load the Dobot DLL only when a script explicitly starts the robot.
+# Loading at import time makes simulation/tests fail before hardware is needed.
+api = None
 
 """
 These coordinates are to the left of the robot's x axis and slight above the xy plane, viewed from
@@ -19,23 +23,31 @@ the robot out of the way. You can change the coordinates here if you really want
 """
 home_pos = [200,100,50]
 
+
+def wait_for_queued_cmd(api, exec_cmd, label="command", timeout_s=45.0):
+    start = time.time()
+    while exec_cmd > dType.GetQueuedCmdCurrentIndex(api)[0]:
+        if time.time() - start > timeout_s:
+            dType.SetQueuedCmdStopExec(api)
+            dType.SetQueuedCmdClear(api)
+            raise TimeoutError(f"Dobot timed out waiting for {label} after {timeout_s:.1f}s.")
+        dType.dSleep(25)
+
 def initialize_robot(api):
     #detect the robot's com port
     com_port = dType.SearchDobot(api)[0]
     
     #if we can't find it, then we can't continue, so exit
     if "COM" not in com_port:
-        print("Error: The robot either isn't on or isn't responding. Exiting now")
-        exit()
+        raise RuntimeError("The robot either isn't on or isn't responding.")
     
     #we've found it, so let's try to connect
-    print(com_port)
-    state = dType.ConnectDobot(api, "COM5", 115200)[0]
+    print(f"[INFO] Dobot detected on {com_port}")
+    state = dType.ConnectDobot(api, com_port, 115200)[0]
     
     #If the connection failed at this point, we also can't proceed, so we need to exit
     if state != dType.DobotConnect.DobotConnect_NoError:
-        print("Failed to connect to Dobot!")
-        exit()
+        raise RuntimeError(f"Failed to connect to Dobot: {CON_STR.get(state, state)}")
     
     """
         stop any queued commands and clear the queue. You HAVE TO do this every time you initialize the robot
@@ -71,8 +83,8 @@ def initialize_robot(api):
     
     #Allow the homing command to complete. The robot will beep and the LED will turn green
     #when it's ready to go
-    while execCmd > dType.GetQueuedCmdCurrentIndex(api)[0]:
-        dType.dSleep(25)
+    print("[INFO] Waiting for Dobot home command to finish...")
+    wait_for_queued_cmd(api, execCmd, label="home command", timeout_s=45.0)
         
     #OK, the robot is ready to move!
     
@@ -83,8 +95,7 @@ def move_to_xyz(api,x,y,z,rHead=0):
     cmdIndx = -1
     execCmd = dType.SetPTPCmd(api,dType.PTPMode.PTPMOVJXYZMode,x,y,z,rHead,isQueued=0)[0]
     #Allow the command to complete. The robot will stop moving when it's done
-    while execCmd > dType.GetQueuedCmdCurrentIndex(api)[0]:
-        dType.dSleep(25)
+    wait_for_queued_cmd(api, execCmd, label=f"move_to_xyz({x}, {y}, {z})", timeout_s=20.0)
 
 """
     Move the robot to the given joint angles using PTP Linear ANGLE mode
@@ -95,8 +106,7 @@ def move_joint_angles(api,J1,J2,J3,J4=0):
     
     execCmd = dType.SetPTPCmd(api, dType.PTPMode.PTPMOVJANGLEMode, J1, J2, J3, J4, isQueued = 0)[0]
     #Allow the command to complete. The robot will stop moving when it's done
-    while execCmd > dType.GetQueuedCmdCurrentIndex(api)[0]:
-        dType.dSleep(25)
+    wait_for_queued_cmd(api, execCmd, label="move_joint_angles", timeout_s=20.0)
     
 """
     Move the robot to it's home position. Note: this will use basic PTP motion, rather than
@@ -113,15 +123,14 @@ def rotate_end_effector(api,angle):
         cmdIndx = -1
         execCmd = dType.SetPTPCmd(api,dType.PTPMode.PTPMOVLXYZMode,pose[0],pose[1],pose[2],angle,isQueued=0)[0]
         #Allow the command to complete. The robot will stop moving when it's done
-        while execCmd > dType.GetQueuedCmdCurrentIndex(api)[0]:
-            dType.dSleep(25)
+        wait_for_queued_cmd(api, execCmd, label="rotate_end_effector", timeout_s=20.0)
         
 def open_gripper(api):
     #arguments are: api, enable control = 1, grip = 0 ("release"), isQueued = 0
     dType.SetEndEffectorGripper(api,1,0,0)[0]
     #This command just gets sent, there is no feedback, so we need to wait until the gripper
     #is done opening
-    dType.dSleep(500)
+    dType.dSleep(800)
 
 def close_gripper(api):
     #arguments are: api, enable control = 1, grip = 1 ("close"), isQueued = 0
@@ -148,9 +157,15 @@ def move_to_home_async(api):
 def open_gripper_async(api):
     return dType.SetEndEffectorGripper(api, 1, 0, isQueued=1)[0]
 
+def open_gripper_now(api):
+    return dType.SetEndEffectorGripper(api, 1, 0, isQueued=0)[0]
+
 def close_gripper_async(api):
     return dType.SetEndEffectorGripper(api, 1, 1, isQueued=1)[0]
 
 def stop_pump_async(api):
     return dType.SetEndEffectorSuctionCup(api, 1, 0, isQueued=1)[0]
+
+def wait_async(api, wait_time_ms):
+    return dType.SetWAITCmd(api, wait_time_ms, isQueued=1)[0]
 

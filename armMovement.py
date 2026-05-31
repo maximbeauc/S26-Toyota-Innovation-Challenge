@@ -1,6 +1,6 @@
 import time
 import math
-import dobotArm
+from Collaborative_Robotics import dobotArm
 
 
 TEST_OBJECTS = [
@@ -8,9 +8,7 @@ TEST_OBJECTS = [
     {'id': 'object_2', 'x': 220, 'y': 60, 'priority': 1},
 ]
 
-TEST_HAND_START = {'x': 350.0, 'y': 100.0, 'z': 40.0, 'radius': 35.0, 'gesture': 'Open'}
-TEST_HAND_PULL_AWAY_SPEED_MM_S = 7.0
-TEST_HAND_MAX_X = 430.0
+TEST_HAND_START = {'x': 150.0, 'y': -170.0, 'z': 40.0, 'radius': 35.0, 'gesture': 'Open'}
 
 class State:
     IDLE = "IDLE"
@@ -197,11 +195,14 @@ class CollaborativeRobot:
                 print("Attempting to grasp target object...")
                 if self.target_obj and self.api:
                     cx, cy = self.target_obj.get('x'), self.target_obj.get('y')
-                    dobotArm.move_to_xyz_async(self.api, cx, cy, self.Z_PICK)
-                    dobotArm.close_gripper_async(self.api)
-                    dobotArm.stop_pump_async(self.api)
+                    down_cmd = dobotArm.move_to_xyz_async(self.api, cx, cy, self.Z_PICK)
+                    close_cmd = dobotArm.close_gripper_async(self.api)
+                    wait_cmd = dobotArm.wait_async(self.api, 700)
                     self.active_cmd_index = dobotArm.move_to_xyz_async(self.api, cx, cy, self.Z_SAFE)
-                    print(f"[DEBUG] Dispatching Grasp Sequence (Down, Grab, Up). Final Queue ID: {self.active_cmd_index}")
+                    print(
+                        "[DEBUG] Dispatching Grasp Sequence "
+                        f"(Down={down_cmd}, Close={close_cmd}, Wait={wait_cmd}, Up={self.active_cmd_index})"
+                    )
                 self.cmd_dispatched = True
                 
             if not self.is_robot_busy():
@@ -273,7 +274,7 @@ class CollaborativeRobot:
             
             # Check if we arrived
             dist_to_shadow = self.distance_2d([bot_pos[0], bot_pos[1]], [shadow_x, shadow_y])
-            in_release_zone = (dist_to_shadow < 10.0)
+            in_release_zone = (not self.api) or (dist_to_shadow < 10.0)
             
             if in_release_zone: 
                 self.change_state(State.RELEASE)
@@ -281,8 +282,13 @@ class CollaborativeRobot:
         elif self.state == State.RELEASE:
             if not self.cmd_dispatched:
                 if self.api: 
-                    self.active_cmd_index = dobotArm.open_gripper_async(self.api)
-                    print(f"[DEBUG] Dispatching Gripper Open. Queue ID: {self.active_cmd_index}")
+                    open_cmd = dobotArm.open_gripper_now(self.api)
+                    dobotArm.dType.dSleep(800)
+                    self.active_cmd_index = dobotArm.stop_pump_async(self.api)
+                    print(
+                        "[DEBUG] Dispatching Release Sequence "
+                        f"(OpenNow={open_cmd}, StopPump={self.active_cmd_index})"
+                    )
                 self.held_object = None
                 self.cmd_dispatched = True
                 
@@ -323,7 +329,7 @@ def run_two_object_robot_test(use_hardware=True):
     Live robot test:
     - Starts with two simulated objects inside the Dobot workspace.
     - Presents an open hand for the first object.
-    - Pulls that hand away at 7 mm/s after the first object is dropped.
+    - Keeps that hand static until the first object is dropped, then removes it.
     """
     print("Starting two-object collaborative handoff test...")
     print("Objects are simulated at reachable Dobot coordinates:")
@@ -332,7 +338,7 @@ def run_two_object_robot_test(use_hardware=True):
     print(
         "Open hand starts at "
         f"X={TEST_HAND_START['x']}mm, Y={TEST_HAND_START['y']}mm "
-        f"and pulls away at {TEST_HAND_PULL_AWAY_SPEED_MM_S}mm/s after first drop."
+        "and disappears after the first drop."
     )
 
     api = None
@@ -345,25 +351,14 @@ def run_two_object_robot_test(use_hardware=True):
     bot = CollaborativeRobot(api=api)
     remaining_objects = [obj.copy() for obj in TEST_OBJECTS]
     hand = TEST_HAND_START.copy()
-    first_drop_complete = False
+    hand_visible = True
     previous_state = bot.state
-    last_tick = time.time()
 
     print("Press Ctrl+C to exit.")
 
     try:
         while True:
-            now = time.time()
-            dt = now - last_tick
-            last_tick = now
-
-            if first_drop_complete and hand['x'] < TEST_HAND_MAX_X:
-                hand['x'] = min(
-                    TEST_HAND_MAX_X,
-                    hand['x'] + TEST_HAND_PULL_AWAY_SPEED_MM_S * dt
-                )
-
-            hands = [hand] if not first_drop_complete or hand['x'] < TEST_HAND_MAX_X else []
+            hands = [hand] if hand_visible else []
             bot.update(hands, remaining_objects)
 
             if previous_state == State.VERIFY_RELEASE and bot.state == State.IDLE:
@@ -371,9 +366,8 @@ def run_two_object_robot_test(use_hardware=True):
                     completed = remaining_objects.pop(0)
                     print(f"[TEST] Completed drop for {completed['id']}.")
                     if completed['id'] == 'object_1':
-                        first_drop_complete = True
-                        hand['gesture'] = 'Open'
-                        print("[TEST] First object dropped. Pulling simulated hand away.")
+                        hand_visible = False
+                        print("[TEST] First object dropped. Simulated hand disappeared.")
 
                 if not remaining_objects:
                     print("[TEST] Both objects have been picked up. Returning home and ending test.")
